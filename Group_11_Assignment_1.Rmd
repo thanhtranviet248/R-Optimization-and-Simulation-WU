@@ -1,0 +1,434 @@
+---
+title: "SCA1 Homework 1"
+author: "Thanh Tran Viet-h12430817, Krishna Varun Varma Kalidindi-h12438206, Iryna Ustych-h12427988"
+date: "4 October 2024"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+## Question a
+
+```{r, fig.pos="H", out.width="80%"}
+knitr::include_graphics("D:\\WU\\SCA1\\Exercise 1\\Problem_1_Question_a.PNG")
+```
+
+## Question b
+
+```{r, fig.pos="H", out.width="80%"}
+knitr::include_graphics("D:\\WU\\SCA1\\Exercise 1\\Problem_1_Question_b.PNG")
+```
+
+## Question c
+
+Import libraries
+```{r}
+library(lpSolve)
+
+library(scatterplot3d)
+```
+
+Solve the problem
+```{r}
+optfunc_1 <- c(8,12)
+
+lhs_1 <- matrix(data = c(1,3,2,2,6,2,1,0,0,1), nrow = 5, ncol = 2, byrow = TRUE)
+
+dir_1 <- c(">=",">=",">=","<=","<=")
+
+rhs_1 <- c(9,10,18,7,6)
+
+model_1 <- lp(direction = "min",
+            objective.in = optfunc_1,
+            const.mat = lhs_1,
+            const.dir = dir_1,
+            const.rhs = rhs_1,
+            compute.sens = TRUE,
+            all.int = TRUE)
+
+print(paste("The solution is", model_1$solution[1], model_1$solution[2]))
+```
+
+## Question d
+
+Calculate the lower and upper bounds of the objective function coefficients
+```{r}
+print(paste("The lower bound of objective function coefficients is", 
+            model_1$sens.coef.from[1],model_1$sens.coef.from[2]))
+
+print(paste("The upper bound of objective function coefficients is", 
+            model_1$sens.coef.to[1],model_1$sens.coef.to[2]))
+```
+
+Because the lower bound of objective function coefficient for x1 is 4, when it changes from 8 to 6, the optimized solution will not change.
+```{r}
+optfunc_2 <- c(6,12)
+
+model_2 <- lp(direction = "min",
+                    objective.in = optfunc_2,
+                    const.mat = lhs_1,
+                    const.dir = dir_1,
+                    const.rhs = rhs_1,
+                    compute.sens = TRUE,
+                    all.int = TRUE)
+
+print(paste("The solution is", model_2$solution[1], model_2$solution[2]))
+```
+
+However, the lower bound of objective function coefficient for x2 is 8 so when it decreases from 12 to 2, the optimized solution will change.
+```{r}
+optfunc_3 <- c(8,2)
+
+model_3 <- lp(direction = "min",
+                    objective.in = optfunc_3,
+                    const.mat = lhs_1,
+                    const.dir = dir_1,
+                    const.rhs = rhs_1,
+                    compute.sens = TRUE,
+                    all.int = TRUE)
+
+print(paste("The revised solution is", model_3$solution[1], model_3$solution[2]))
+```
+
+## Question e
+
+```{r}
+sdp_1 <- model_1$duals
+
+for (i in 1:length(sdp_1)) {
+ print(paste("The shadow price for constraint", i, "is", sdp_1[i])) 
+}
+
+for (i in 1:length(sdp_1[1:5])) {
+ print(paste("If the RHS of constraint", i, "increases by 1, the objective value will increase by", 
+             sdp_1[i])) 
+}
+
+bd_const_1 <- lhs_1 %*% model_1$solution == rhs_1
+
+for (j in 1:length(bd_const_1)) {
+  print(paste("Constraint", j,"is binding?", bd_const_1[j]))
+}
+
+allow_decrease_1 <- model_1$duals.from
+
+allow_increase_1 <- model_1$duals.to
+
+for (k in 1:length(allow_decrease_1[1:5])) {
+  print(paste("The lower bound of RHS values for which shadow price", k, 
+              "holds is", allow_decrease_1[k]))
+}
+  
+for (k in 1:length(allow_increase_1[1:5])) {
+  print(paste("The upper bound of RHS values for which shadow price", k, 
+              "holds is", allow_increase_1[k]))
+}
+```
+
+## Question f
+
+```{r}
+solmat_1 <- matrix(0, nrow = 13, ncol = 2)
+
+optvec_1 <- c()
+
+for (m in 3:15) {
+  rhs_2 <- c(m,10,18,7,6)
+  model_4 <- lp(direction = "min",
+                    objective.in = optfunc_1,
+                    const.mat = lhs_1,
+                    const.dir = dir_1,
+                    const.rhs = rhs_2,
+                    compute.sens = TRUE,
+                    all.int = TRUE)
+  
+  solmat_1[m-2,] <- model_4$solution
+  
+  optvec_1[m-2] <- model_4$objval
+  }
+```
+
+The change of optimal value regarding the change of right-hand side of constraint 1
+```{r}
+plot(x = 3:15, y = optvec_1, 
+     main = "Optimal value change vs constraint 1 RHS change")
+```
+
+The change of decision variables regarding the change of right-hand side of constraint 1
+```{r}
+scatterplot3d(solmat_1[,1], solmat_1[,2], 3:15, pch = 19, color = "blue", 
+              main = "Decision variables change vs constraint 1 RHS change", 
+              xlab = "x_1", ylab = "x_2", zlab = "RHS constraint 1")
+```
+
+# Problem 2
+
+## Question a
+
+The objective function is minimizing the total supply cost
+```{r}
+optfunc_4 <- c(285, 290, 295, 250, 270, 250)
+```
+
+Decisions variables are the quantity of Indium and Gallium ordered from each supplier.
+
+Constraints are:
+
+* Total demand need to be fulfilled.
+
+* Suppliers' capacity.
+
+* Non-negativity constraint for the quantity of Indium and Gallium ordered from each supplier.
+```{r}
+lhs_2 <- matrix(c(1, 1, 1, 0, 0, 0,
+                 0, 0, 0, 1, 1, 1,
+                 1, 0, 0, 0, 0, 0,
+                 0, 1, 0, 0, 0, 0,
+                 0, 0, 1, 0, 0, 0,
+                 0, 0, 0, 1, 0, 0,
+                 0, 0, 0, 0, 1, 0,
+                 0, 0, 0, 0, 0, 1),
+               nrow = 8,
+               ncol = 6,
+               byrow = TRUE)
+
+dir_2 <- c(">=", ">=", "<=", "<=", "<=", "<=", "<=", "<=")
+
+rhs_3 <- c(1000, 800, 350, 500, 450, 750, 250, 350)
+
+model_5 <- lp("min", optfunc_4, lhs_2, dir_2, rhs_3, all.int = TRUE)
+
+print(paste("The quantity of Indium should be bought from each supplier are:", 
+            model_5$solution[1],
+            model_5$solution[2],
+            model_5$solution[3]))
+
+print(paste("The quantity of Gallium should be bought from each supplier are:", 
+            model_5$solution[4],
+            model_5$solution[5],
+            model_5$solution[6]))
+
+print(paste("The total cost is", model_5$objval))
+
+print(paste("The percentage of cost spending on Indium is", 
+            (model_5$solution[1]*optfunc_4[1]+
+               model_5$solution[2]*optfunc_4[2]+
+               model_5$solution[3]*optfunc_4[3])/model_5$objval))
+
+print(paste("The percentage of cost spending on Gallium is", 
+            (model_5$solution[4]*optfunc_4[4]+
+               model_5$solution[5]*optfunc_4[5]+
+               model_5$solution[6]*optfunc_4[6])/model_5$objval))
+```
+
+## Question b
+
+In case supplier 1's capacities have shrunk due to production issues, the LP model is adjusted.
+```{r}
+rhs_4 <- c(1000, 800, 350*0.4, 500, 450, 750*0.5, 250, 350)
+
+model_6 <- lp("min", optfunc_4, lhs_2, dir_2, rhs_4, 
+                        compute.sens = TRUE, all.int = TRUE)
+
+print(paste("The quantity of Indium should be bought from each supplier now are:", 
+            model_6$solution[1],
+            model_6$solution[2],
+            model_6$solution[3]))
+
+print(paste("The quantity of Gallium should be bought from each supplier now are:", 
+            model_6$solution[4],
+            model_6$solution[5],
+            model_6$solution[6]))
+
+print(paste("The total cost now is", model_6$objval))
+
+indium_cost_1 <- 
+  model_6$solution[1]*optfunc_4[1]+
+  model_6$solution[2]*optfunc_4[2]+
+  model_6$solution[3]*optfunc_4[3]
+
+print(paste("The total Indium cost spend changed by",
+            model_5$solution[1]*optfunc_4[1]+
+               model_5$solution[2]*optfunc_4[2]+
+               model_5$solution[3]*optfunc_4[3]-indium_cost_1))
+
+gallium_cost_1 <- 
+  model_6$solution[4]*optfunc_4[4]+
+  model_6$solution[5]*optfunc_4[5]+
+  model_6$solution[6]*optfunc_4[6]
+
+print(paste("The total Gallium cost spend changed by",
+            model_5$solution[4]*optfunc_4[4]+
+               model_5$solution[5]*optfunc_4[5]+
+               model_5$solution[6]*optfunc_4[6]-gallium_cost_1))
+
+print(paste("The total cost changed by",model_5$objval - model_6$objval))
+```
+
+# Problem 3
+
+## Question a
+
+The objective function is maximizing the total audience contact.
+```{r}
+optfunc_5 <- c(100000,18000,40000)
+```
+
+Variables are total number of advertisements authorized by each medium.
+
+Constraints are:
+
+* Limitation of the total promotional budget.
+
+* Maximum number of advertisements authorized by each alternative.
+
+* Television advertisments should account for at least 10% of the total number of advertisements authorized.
+
+* Radio advertisements must not exceed 50% of the total number of advertisements authorized.
+
+* Non-negativity constraint for number of advertisements authorized by each alternative.
+```{r}
+lhs_3 <- matrix(c(2000,300,600,
+                  1,0,0,
+                  0,1,0,
+                  0,0,1,
+                  -0.9, 0.1, 0.1,
+                  -1,1,-1),
+                nrow = 6,
+                ncol = 3,
+                byrow = TRUE)
+
+dir_3 <- c("<=","<=","<=","<=","<=","<=")
+
+rhs_5 <- c(18200, 10, 20, 10, 0, 0)
+```
+
+## Question b
+
+```{r}
+model_7 <- lp(direction = "max", 
+              objective.in = optfunc_5, 
+              const.mat = lhs_3, 
+              const.dir = dir_3, 
+              const.rhs = rhs_5, 
+              compute.sens = TRUE,
+              all.int = TRUE)
+
+for (n in 1:length(model_7$solution)) {
+  print(paste("The commercial message should be run for medium", n ,"is", model_7$solution[n]))
+}
+
+for (n in 1: length(model_7$solution)) {
+  medium_budget_1 = c()
+  medium_budget_1[n] <- model_7$solution[n]*lhs_3[1,n]
+  print(paste("Allocated budget for medium", n ,"is", medium_budget_1[n]))
+}
+
+budget_used_1 <- c(lhs_3[1,1],lhs_3[1,2],lhs_3[1,3]) %*% model_7$solution
+
+print(paste("The whole budget used is", budget_used_1))
+
+remaining_budget_1  <- rhs_5[1] - budget_used_1
+
+print(paste("The remaining budget is", remaining_budget_1))
+
+audience_reached_1  <- model_7$objval
+
+print(paste("The total audience reached is", audience_reached_1))
+```
+
+## Question c
+
+```{r}
+bd_const_2 <- lhs_3 %*% model_7$solution == rhs_5
+
+for (o in 1:length(bd_const_2)) {
+  print(paste("Constraint", o,"is binding?", bd_const_2[o]))
+}
+```
+
+```{r}
+sdp_2 <- model_7$duals
+
+for (p in 1:length(sdp_2[1:6])) {
+  print(paste("The shadow price for constraint", p, "is", sdp_2[p]))
+}
+```
+
+```{r}
+allow_decrease_2 <- model_7$duals.from
+
+for (p in 1:length(allow_decrease_2[1:6])) {
+  print(paste("The lower bound of RHS values for which shadow price", p, 
+              "holds is", allow_decrease_2[p]))
+}
+  
+allow_increase_2 <- model_7$duals.to
+
+for (p in 1:length(allow_increase_2[1:6])) {
+  print(paste("The upper bound of RHS values for which shadow price", p, 
+              "holds is", allow_increase_2[p]))
+}
+```
+
+## Question d
+
+```{r}
+sdp_3 = sdp_2[1]
+
+print(paste("The increased number of audience contact is", sdp_3 * 100))
+```
+
+```{r}
+rhs_6 <- c(18200+100, 10, 20, 10, 0, 0)
+
+model_8 <- lp(direction = "max", 
+              objective.in = optfunc_5, 
+              const.mat = lhs_3, 
+              const.dir = dir_3, 
+              const.rhs = rhs_6, 
+              compute.sens = TRUE,
+              all.int = TRUE)
+
+for (q in 1: length(model_8$solution)) {
+  print(paste("The number of commercial messages should now be run on medium", q,
+              "now is", model_8$solution[q]))
+}
+```
+
+```{r}
+bd_const_3 <- lhs_3 %*% model_8$solution == rhs_6
+
+for (r in 1:length(bd_const_3)) {
+  print(paste("Constraint", r,"is binding?", bd_const_3[r]))
+}
+```
+
+When adding $100 to the constraint 1's RHS, while it becomes an unbinding constraint but the change of 100 is much more smaller than the allowable increase of 32000. So the solution {4, 14, 10} is not changed. Nothing "strange" here.
+
+## Question e
+
+```{r}
+rhs_7 <- c(18200+7500, 10, 20, 10, 0, 0)
+
+model_9 <- lp(direction = "max", 
+              objective.in = optfunc_5, 
+              const.mat = lhs_3, 
+              const.dir = dir_3, 
+              const.rhs = rhs_7, 
+              compute.sens = TRUE,
+              all.int = TRUE)
+
+
+for (s in 1:length(model_9$solution)) {
+  print(paste("If $7500 is added, the number of commercial messages should now be run on medium",
+              s,"is", model_9$solution[s]))
+}
+
+audience_reached_2  <- model_9$objval
+
+print(paste("Total audience reached now is", audience_reached_2))
+```
